@@ -5,25 +5,24 @@ import os
 
 app = Flask(__name__)
 
-# --- NEW: This adds a home page so you don't see 'Not Found' ---
 @app.route('/')
 def home():
-    return "<h1>🌌 Nova Cloud Brain is LIVE</h1><p>Status: Ready to process intelligence.</p>"
+    return "<h1>🌌 Nova Cloud Brain is LIVE</h1>"
 
 @app.route('/nova_fetch', methods=['GET'])
 def nova_fetch():
     target_url = request.args.get('url')
     if not target_url:
-        return jsonify({"error": "No URL provided"}), 400
+        return jsonify({"content": "No URL provided"})
     
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        response = requests.get(target_url, headers=headers, timeout=12)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            paragraphs = [p.get_text().strip() for p in soup.find_all('p') if len(p.get_text()) > 40]
-            return jsonify({"content": " ".join(paragraphs[:8])})
-        return jsonify({"content": "Source access denied."})
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(target_url, headers=headers, timeout=15)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        # Get all paragraph text
+        text_content = " ".join([p.get_text() for p in soup.find_all('p')])
+        # Return just the first 3000 characters to keep it fast
+        return jsonify({"content": text_content[:3000]})
     except Exception as e:
         return jsonify({"content": f"Fetch error: {str(e)}"})
 
