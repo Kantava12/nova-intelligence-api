@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 from bs4 import BeautifulSoup
 import os
+import re
 
 app = Flask(__name__)
 
@@ -19,22 +20,20 @@ def nova_fetch():
         response = requests.get(target_url, headers=headers, timeout=15)
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # --- SMART CLEANING: Removes the junk menus and footers ---
-        for junk in soup(['nav', 'footer', 'header', 'script', 'style', 'aside']):
+        # Clean the page
+        for junk in soup(['nav', 'footer', 'header', 'script', 'style', 'aside', 'form']):
             junk.decompose()
 
-        # Only pull text from paragraphs and articles
-        main_content = []
-        for tag in soup.find_all(['p', 'article']):
-            text = tag.get_text().strip()
-            # Only keep real sentences (more than 12 words)
-            if len(text.split()) > 12:
-                main_content.append(text)
-
-        clean_text = " ".join(main_content[:10]) # Get the best 10 paragraphs
-        return jsonify({"content": clean_text if clean_text else "No main text found."})
+        # Find only real paragraphs
+        paragraphs = [p.get_text().strip() for p in soup.find_all('p') if len(p.get_text().split()) > 15]
+        
+        # Take the top 3 paragraphs and clean them up
+        full_text = " ".join(paragraphs[:3])
+        clean_text = re.sub(r'\s+', ' ', full_text) # Fix weird spacing
+        
+        return jsonify({"content": clean_text if clean_text else "I found the site, but couldn't extract clear text."})
     except Exception as e:
-        return jsonify({"content": f"Fetch error: {str(e)}"})
+        return jsonify({"content": f"Cloud Error: {str(e)}"})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
